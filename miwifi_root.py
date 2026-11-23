@@ -334,7 +334,7 @@ def main():
     if a.shell:
         try:
             while True:
-                line = input("root@%s # " % a.host).strip()
+                line = input("%s # " % a.host).strip()
                 if line:
                     print(run_cmd(rt, srv, a.port, line, a.timeout))
         except EOFError:
