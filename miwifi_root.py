@@ -50,19 +50,21 @@ def inert_mac():
     return "02:F0:%02X:%02X:%02X:%02X" % tuple(random.randrange(256) for _ in range(4))
 
 
+def set_hint(var):
+    """How to set an env var in whatever shell the user is most likely in."""
+    return '$env:%s = "..."' % var if os.name == "nt" else "export %s=..." % var
+
+
 def local_ip_for(target):
-    """An address of this machine that the router can route back to."""
-    prefix = ".".join(target.split(".")[:2])
-    out = subprocess.run(["ifconfig"], capture_output=True, text=True).stdout
-    for chunk in out.split("inet ")[1:]:
-        ip = chunk.split()[0]
-        if ip.startswith(prefix + "."):
-            return ip
+    """An address of this machine that the router can route back to. The UDP
+    connect sends nothing; it only asks the kernel which source address it
+    would use, so it also picks the right interface when there are several."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect((target, 53))
-    ip = s.getsockname()[0]
-    s.close()
-    return ip
+    try:
+        s.connect((target, 53))
+        return s.getsockname()[0]
+    finally:
+        s.close()
 
 
 def request(host, path, body=None, ctype=None, timeout=25, proxy=None):
@@ -288,9 +290,9 @@ def main():
         return
 
     if not a.host:
-        raise SystemExit("no router address: export MIWIFI_HOST or pass --host")
+        raise SystemExit("no router address: %s or pass --host" % set_hint("MIWIFI_HOST"))
     if not a.password:
-        raise SystemExit("no password: export MIWIFI_PASS or pass --password")
+        raise SystemExit("no password: %s or pass --password" % set_hint("MIWIFI_PASS"))
     if not (a.verify or a.cmd or a.shell or a.push or a.cleanup or a.root_pass is not None):
         ap.print_help()
         raise SystemExit
