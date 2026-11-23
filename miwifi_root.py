@@ -246,9 +246,14 @@ def push(rt, srv, port, local, remote, timeout=120):
 
 
 def verify(rt):
-    print("     uid==0        : %s" % rt.timed("id -u | grep -qx 0"))
+    uid = rt.timed("id -u | grep -qx 0")
+    print("     uid==0        : %s" % uid)
     print("     /etc/shadow w : %s" % rt.timed("test -w /etc/shadow"))
     print("     control       : %s   <- must be False" % rt.timed("id -u | grep -qx 12345"))
+    if not uid:
+        print("""     This reads the response delay, so a False only proves the sleep did not
+     hold up that response. Firmware that hands the rule to a daemon runs it
+     out of band and always reads False. --cmd 'id' is the authoritative check.""")
 
 
 def cleanup(rt):
@@ -305,6 +310,9 @@ def main():
     rt = Router(a.host, a.password, a.proxy)
     rt.login()
     print("[%s] login ok, stok=%s.." % (a.host, rt.stok[:8]))
+    if srv:
+        print("     the router talks back to %s:%d -- inbound there must be allowed"
+              % (local_ip_for(a.host), a.port))
     if a.verify:
         verify(rt)
     if a.push:
