@@ -74,10 +74,15 @@ def request(host, path, body=None, ctype=None, timeout=25, proxy=None):
     if ctype:
         cmd += ["-H", "Content-Type: %s" % ctype]
     cmd.append("http://%s%s" % (host, path))
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    text, _, code = r.stdout.rpartition("\n")
+    # Never text=True: on Windows that decodes with the locale codec (gbk on a
+    # zh-CN install) and dies on any non-GBK byte in the response. The device
+    # speaks UTF-8, and anything it does not is not our problem to interpret.
+    r = subprocess.run(cmd, capture_output=True)
+    text = (r.stdout or b"").decode("utf-8", "replace")
+    err = (r.stderr or b"").decode("utf-8", "replace")
+    text, _, code = text.rpartition("\n")
     if not code.strip().isdigit():
-        raise SystemExit("request failed: %s" % (r.stderr or text).strip()[:200])
+        raise SystemExit("request failed: %s" % (err or text).strip()[:200])
     return code.strip(), text
 
 
